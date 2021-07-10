@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# Copyright 2020 Mohamed El Morabity
+# Copyright 2020-2021 Mohamed El Morabity
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -99,7 +99,7 @@ class BouyguesTelecom:
                 "display-name": title,
                 "icon": {"src": c.get("logoUrl")},
             }
-            for c in self._query_api("list-chaines.json").get("body", [])
+            for c in self._query_api("list-chaines.json").get("body") or []
             if (key := c.get("key")) and (title := c.get("title"))
         }
 
@@ -218,7 +218,8 @@ class BouyguesTelecom:
 
     @staticmethod
     def _get_xmltv_ns_episode_number(
-        season: Optional[int], episode: Optional[int],
+        season: Optional[int],
+        episode: Optional[int],
     ) -> Optional[str]:
         if not season and not episode:
             return None
@@ -270,13 +271,14 @@ class BouyguesTelecom:
         xmltv_credits = self._xmltv_element("credits")
         self._xmltv_element_with_text("director", program.get("realisateur"))
 
-        for people in program.get("characters", []):
+        for people in program.get("characters") or []:
             function = people.get("function")
             credit = self._API_XMLTV_CREDIT.get(function)
             if not credit:
                 if function:
                     logging.debug(
-                        'No XMLTV credit defined for function "%s"', function,
+                        'No XMLTV credit defined for function "%s"',
+                        function,
                     )
                 continue
 
@@ -298,14 +300,19 @@ class BouyguesTelecom:
 
         # Date the programme or film was finished
         self._xmltv_element_with_text(
-            "date", program.get("productionDate"), parent=xmltv_program,
+            "date",
+            program.get("productionDate"),
+            parent=xmltv_program,
         )
 
         # Type of programme
-        genres = program.get("genre", [])
-        for genre in program.get("genre", []):
+        genres = program.get("genre") or []
+        for genre in genres:
             self._xmltv_element_with_text(
-                "category", genre, parent=xmltv_program, lang="fr",
+                "category",
+                genre,
+                parent=xmltv_program,
+                lang="fr",
             )
         etsi_category = next(
             (c for g in genres if (c := self._API_ETSI_CATEGORIES.get(g))),
@@ -383,10 +390,13 @@ class BouyguesTelecom:
             ).get("id")
             if not bouygues_telecom_channel_id:
                 continue
-            programs = self._query_api(
-                f"epg/{bouygues_telecom_channel_id}.json",
-                d="{}{}{}".format(start.year, start.month - 1, start.day),
-            ).get("programs", [])
+            programs = (
+                self._query_api(
+                    f"epg/{bouygues_telecom_channel_id}.json",
+                    d="{}{}{}".format(start.year, start.month - 1, start.day),
+                ).get("programs")
+                or []
+            )
 
             for program in programs:
                 try:
@@ -639,7 +649,8 @@ def _main() -> None:
     elif args.debug:
         logging_level = logging.DEBUG
     logging.basicConfig(
-        level=logging_level, format="%(levelname)s: %(message)s",
+        level=logging_level,
+        format="%(levelname)s: %(message)s",
     )
 
     try:
